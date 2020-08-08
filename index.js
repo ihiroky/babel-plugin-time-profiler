@@ -277,7 +277,7 @@ function insertTrace(path, state, lines) {
 function isTargetFile(state) {
   const target = state.opts.target
   if (!target) {
-    return false
+    return true
   }
 
   if (typeof target === 'string') {
