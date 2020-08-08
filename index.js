@@ -141,9 +141,7 @@ function insertExit(path, bptpObj) {
           types.identifier(BPTP_NS),
           types.identifier(BPTP_EXIT)
         ),
-        [
-          bptpObj
-        ]
+        [ bptpObj ]
       )
     )
   )
@@ -180,9 +178,7 @@ function insertExitForArrowFunctionOmittingForm(path, state, name, lines) {
             types.identifier(BPTP_NS),
             types.identifier(BPTP_EXIT)
           ),
-          [
-            bptpObj
-          ]
+          [ bptpObj ]
         )
       ),
       types.returnStatement(
@@ -214,9 +210,7 @@ function insertExitForReturnStatement(path, bptpObj) {
             types.identifier(BPTP_NS),
             types.identifier(BPTP_EXIT)
           ),
-          [
-            bptpObj
-          ]
+          [ bptpObj ]
         )
       )
     )
@@ -233,9 +227,7 @@ function insertExitForReturnStatement(path, bptpObj) {
             types.identifier(BPTP_NS),
             types.identifier(BPTP_EXIT)
           ),
-          [
-            bptpObj
-          ]
+          [ bptpObj ]
         )
       )
     )
@@ -278,7 +270,6 @@ function insertTrace(path, state, lines) {
       insertExit(path, bptpObj)
     }
   } else {
-    // Traverse arrow function omitting form
     insertExitForArrowFunctionOmittingForm(path, state, name, lines)
   }
 }
