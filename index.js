@@ -16,10 +16,11 @@ const dataAllocationAst = template.statements(`
     now: (p.performance)
       ? function() { return p.performance.now() }
       : function() { return Date.now() },
-    enter: function(file, line, col, funcName) {
+    enter: function(file, lineNo, colNo, funcName, line) {
       return {
         key: file + '/' + funcName,
-        loc: 'l:' + line + ' c:' + col,
+        loc: 'l:' + lineNo + ' c:' + colNo,
+        line: line,
         enterTime: %%BPTP%%.now()
       }
     },
@@ -35,6 +36,7 @@ const dataAllocationAst = template.statements(`
       if (duration < state.min) { state.min = duration }
       if (duration > state.max) { state.max = duration }
       state.loc = bptpObj.loc
+      state.line = bptpObj.line
     },
     start: function() {
       %%BPTP%%.running = true
@@ -59,6 +61,7 @@ const dataAllocationAst = template.statements(`
         result.push({
             key: i,
             loc: v.loc,
+            line: v.line,
             times: v.times,
             duration: round(v.duration),
             avg: round(v.duration / v.times),
@@ -75,27 +78,28 @@ const dataAllocationAst = template.statements(`
       console.info('Profiler active time:', profilingDuration, 'ms')
       console.info('User code executing time:', round(wholeDuration), 'ms (' + round(wholeDuration / profilingDuration * 100) + '%)')
       console.info(' === Top', result.length, 'function calls order by', orderBy, '===')
-      for (var i in result) {
-        var v = result[i]
+      result.forEach(function(v) {
         var percentage = round(v.duration / wholeDuration * 100)
-        console.info(v.key, v.loc, 'times:', v.times, 'duration:', v.duration, 'ms (' + percentage +'%)', 'min:', v.min, 'ms', 'max:', v.max, 'ms', 'avg:', v.avg, 'ms')
-      }
+        console.info(v.key, v.loc, 'times:', v.times, 'duration:', v.duration, 'ms (' + percentage +'%)', 'min:', v.min, 'ms', 'max:', v.max, 'ms', 'avg:', v.avg, 'ms: ', v.line)
+      })
     }
   }
 })(window, window)`)({ BPTP: types.identifier(BPTP_NS)})
 // Use `(globalThis || window, (typeof require === 'function' && require('perf_hooks')) || window)` to run on NodeJS
 
-function createEnterParameters(path, state, name) {
+function createEnterParameters(path, state, name, lines) {
   const start = path.node.loc ? path.node.loc.start : null
+  const line = start ? lines[start.line - 1] : '<No line information>'
   return [
     types.stringLiteral(pathLib.basename(state.filename)), // TODO 何階層か表示
     types.numericLiteral(start ? start.line : -1),
     types.numericLiteral(start ? start.column : -1),
-    types.stringLiteral(name)
+    types.stringLiteral(name),
+    types.stringLiteral(line)
   ]
 }
 
-function insertEnter(path, state, name) {
+function insertEnter(path, state, name, lines) {
   const bptpObj = path.scope.generateUidIdentifier(BPTP_OBJ)
   const declarator = types.variableDeclarator(
     bptpObj,
@@ -104,7 +108,7 @@ function insertEnter(path, state, name) {
         types.identifier(BPTP_NS),
         types.identifier(BPTP_ENTER)
       ),
-      createEnterParameters(path, state, name)
+      createEnterParameters(path, state, name, lines)
     )
   )
   
@@ -132,7 +136,7 @@ function insertExit(path, bptpObj) {
   )
 }
 
-function insertExitForArrowFunctionOmittingForm(path, state, name) {
+function insertExitForArrowFunctionOmittingForm(path, state, name, lines) {
   const bptpObj = path.scope.generateUidIdentifier(BPTP_OBJ)
   const declarator = types.variableDeclarator(
     bptpObj,
@@ -141,7 +145,7 @@ function insertExitForArrowFunctionOmittingForm(path, state, name) {
         types.identifier(BPTP_NS),
         types.identifier(BPTP_ENTER)
       ),
-      createEnterParameters(path, state, name)
+      createEnterParameters(path, state, name, lines)
     )
   )
   const retIdentifier = types.identifier('ret')
@@ -246,14 +250,13 @@ const returnVisitor = {
   }
 }
 
-function insertTrace(path, state, alias) {
+function insertTrace(path, state, lines) {
   const name =
     path.node.id ? path.node.id.name :
     path.node.key ? path.node.key.name :
-    alias ? alias :
     `anonymous_${path.node.loc.start.line}_${path.node.loc.start.column}`
   if (types.isBlockStatement(path.node.body)) {
-    const bptpObj = insertEnter(path, state, name)
+    const bptpObj = insertEnter(path, state, name, lines)
     path.traverse(returnVisitor, { bptpObj })
 
     // Insert exit funtion if no return statement in the tail.
@@ -263,67 +266,7 @@ function insertTrace(path, state, alias) {
     }
   } else {
     // Traverse arrow function omitting form
-    insertExitForArrowFunctionOmittingForm(path, state, name)
-  }
-}
-
-const anonymousFunctionExpressionVisitor = {
-  FunctionExpression(path) {
-    // console.error('anonymous FunctionExpression', this.name, path.node)
-    if (!hasEnoughLines(path, this.state)) {
-      return
-    }
-    insertTrace(path, this.state, this.name)
-    path.skip()
-  }
-}
-
-const functionExpressionInVabiableDeclaratorVisitor = {
-  FunctionExpression(path) {
-    // console.error('anonymous FunctionExpression', path.node)
-    if (!hasEnoughLines(path, this.state)) {
-      return
-    }
-    insertTrace(path, this.state, this.name)
-    path.skip()
-  },
-  ObjectExpression(path) {
-    path.traverse(objectExpressionVisitor, {
-      name: [this.name],
-      state: this.state
-    })
-    path.skip()
-  }
-}
-
-const objectExpressionVisitor = {
-  ObjectProperty: {
-    enter(path) {
-      this.name.push(path.node.key.name)
-      // console.error('ObjectProperty', path.node.key.name, this.name)
-      if (types.isObjectExpression(path.node.value)) {
-        return
-      }
-      path.traverse(anonymousFunctionExpressionVisitor, {
-        name: this.name.join('.'),
-        state: this.state
-      })
-    },
-    exit() {
-      this.name.pop()
-    }
-  }
-}
-
-function createNameFromMemberExpression(path) {
-  if (types.isIdentifier(path.node.object)) {
-    return path.node.object.name + '.' + path.node.property.name
-  } else if (types.isMemberExpression(path.node.object)) {
-    return createNameFromMemberExpression(path.get('object')) + '.' + path.node.property.name
-  } else if (types.isThisExpression(path.node.object)) {
-    return 'this.'  + path.node.property.name
-  } else {
-    throw new Error('Unexprected path type ' + path.node.object.type)
+    insertExitForArrowFunctionOmittingForm(path, state, name, lines)
   }
 }
 
@@ -359,6 +302,7 @@ function hasEnoughLines(path, state) {
 }
 
 module.exports = function(babel) {
+  const lines = []
   return {
     visitor: {
       Program: {
@@ -366,6 +310,7 @@ module.exports = function(babel) {
           if (!isTargetFile(state)) {
             path.stop()
           }
+          Array.prototype.push.apply(lines, state.file.code.split(/\r?\n/))
         },
         exit(path) {
           path.get('body')[0].insertBefore(dataAllocationAst[0])
@@ -373,43 +318,10 @@ module.exports = function(babel) {
         }
       },
       Function(path, state) {
-        // console.error('FUNCTION', path.node.id)
-        if (types.isVariableDeclarator(path.parent)
-        || types.isAssignmentExpression(path.parent)
-        || types.isObjectProperty(path.parent)) {
-          return
-        }
         if (!hasEnoughLines(path, state)) {
           return
         }
-        insertTrace(path, state)
-      },
-      VariableDeclarator(path, state) {
-        // console.error('VARIABLE_DECLARATOR', path.node)
-        path.traverse(functionExpressionInVabiableDeclaratorVisitor, {
-          name: path.node.id.name,
-          state,
-        })
-        path.skip()
-      },
-      AssignmentExpression(path, state) {
-        // console.error('ASSIGNMENT_EXPRESSION', path.node)
-        path.traverse(anonymousFunctionExpressionVisitor, {
-          name: createNameFromMemberExpression(path.get('left')),
-          state,
-        })
-        path.skip()
-      },
-      ObjectExpression(path, state) {
-        // console.error('OBJECT_EXPRESSION', path.node)
-        //if (types.isObjectProperty(path.parent)) {
-        //  return
-        //}
-        path.traverse(objectExpressionVisitor, {
-          name: [],
-          state,
-        })
-        path.skip()
+        insertTrace(path, state, lines)
       }
     }
   }
