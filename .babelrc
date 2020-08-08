@@ -1,0 +1,9 @@
+{
+  "plugins": [
+    ["./index.js", {
+      "target": ["**/*"],
+      "minLinesToTrace": 0
+    }]
+  ],
+  "retainLines": true
+}

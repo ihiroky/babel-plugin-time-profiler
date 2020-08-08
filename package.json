@@ -1,0 +1,15 @@
+{
+  "name": "babel-plugin-trace-profiler",
+  "version": "0.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "@babel/cli": "^7.10.1"
+  },
+  "dependencies": {
+    "@babel/core": "^7.10.2",
+    "@babel/template": "^7.10.4",
+    "minimatch": "^3.0.4"
+  }
+}

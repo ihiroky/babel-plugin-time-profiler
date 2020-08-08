@@ -1,0 +1,17 @@
+<html>
+    <head>
+        <script type="text/javascript" src="test-traced.js"></script>
+        <script type="text/javascript">
+function run() {
+    for (var i = 0; i < 10; i++) {
+        test0();
+        test0();
+        test1();
+    }
+}
+        </script>
+    </head>
+    <body>
+        <button onclick="run();">Run</button>
+    </body>
+</html>
