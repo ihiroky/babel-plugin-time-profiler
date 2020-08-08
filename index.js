@@ -15,7 +15,7 @@ const dataAllocationAst = template.statements(`
     now: (p.performance)
       ? function() { return p.performance.now() }
       : function() { return Date.now() },
-    enter: function(file, lineNo, colNo, funcName, line) {
+    %%ENTER%%: function(file, lineNo, colNo, funcName, line) {
       return {
         key: file + '/' + funcName,
         loc: 'l:' + lineNo + ' c:' + colNo,
@@ -23,7 +23,7 @@ const dataAllocationAst = template.statements(`
         enterTime: %%BPTP%%.now()
       }
     },
-    exit: function(bptpObj) {
+    %%EXIT%%: function(bptpObj) {
       if (!%%BPTP%%.running) { return }
       var duration = %%BPTP%%.now() - bptpObj.enterTime
       let state = %%BPTP%%.table[bptpObj.key]
@@ -83,7 +83,11 @@ const dataAllocationAst = template.statements(`
       })
     }
   }
-})(window, window)`)({ BPTP: types.identifier(BPTP_NS)})
+})(window, window)`)({
+  BPTP: types.identifier(BPTP_NS),
+  ENTER: types.identifier(BPTP_ENTER),
+  EXIT: types.identifier(BPTP_EXIT)
+})
 // Use `(globalThis || window, (typeof require === 'function' && require('perf_hooks')) || window)` to run on NodeJS
 
 function getFileName(state) {
