@@ -2,7 +2,8 @@
   "plugins": [
     ["./index.js", {
       "target": ["**/*"],
-      "minLinesToTrace": 0
+      "minLinesToTrace": 0,
+      "dropPathPrefix": "src/",
     }]
   ],
   "retainLines": true

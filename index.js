@@ -1,4 +1,3 @@
-const pathLib = require('path')
 const types = require('@babel/types')
 const template = require('@babel/template')
 const minimatch = require('minimatch')
@@ -87,11 +86,21 @@ const dataAllocationAst = template.statements(`
 })(window, window)`)({ BPTP: types.identifier(BPTP_NS)})
 // Use `(globalThis || window, (typeof require === 'function' && require('perf_hooks')) || window)` to run on NodeJS
 
+function getFileName(state) {
+  const cwd = state.cwd
+  const filename = state.filename
+  const dropPathPrefix = state.opts.dropPathPrefix || ''
+  const relativeName = filename.substring(cwd.length + 1)  // drop with '/'
+  return relativeName.substring(0, dropPathPrefix.length)  === dropPathPrefix
+    ? relativeName.substring(dropPathPrefix.length)
+    : relativeName
+}
+
 function createEnterParameters(path, state, name, lines) {
   const start = path.node.loc ? path.node.loc.start : null
   const line = start ? lines[start.line - 1] : '<No line information>'
   return [
-    types.stringLiteral(pathLib.basename(state.filename)), // TODO 何階層か表示
+    types.stringLiteral(getFileName(state)),
     types.numericLiteral(start ? start.line : -1),
     types.numericLiteral(start ? start.column : -1),
     types.stringLiteral(name),
