@@ -4,6 +4,7 @@
       "target": ["**/*"],
       "minLinesToTrace": 0,
       "dropPathPrefix": "src/",
+      "displayTop": 20
     }]
   ],
   "retainLines": true

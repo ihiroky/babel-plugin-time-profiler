@@ -7,7 +7,7 @@ const BPTP_ENTER = 'enter'
 const BPTP_EXIT = 'exit'
 const BPTP_OBJ = '__bptp'
 
-const dataAllocationAst = template.statements(`
+const profileDataTemplate = template.statement(`
 (function(g, p) {
   g.%%BPTP%% = g.%%BPTP%% || {
     running: false,
@@ -73,7 +73,7 @@ const dataAllocationAst = template.statements(`
         console.error('Unexpected orderBy', orderBy)
         return
       }
-      result = result.sort(function(a, b) { return b[orderBy] - a[orderBy] }).slice(0, 10)
+      result = result.sort(function(a, b) { return b[orderBy] - a[orderBy] }).slice(0, %%TOP%%)
       console.info('Profiler active time:', profilingDuration, 'ms')
       console.info('User code executing time:', round(wholeDuration), 'ms (' + round(wholeDuration / profilingDuration * 100) + '%)')
       console.info(' === Top', result.length, 'function calls order by', orderBy, '===')
@@ -83,11 +83,7 @@ const dataAllocationAst = template.statements(`
       })
     }
   }
-})(window, window)`)({
-  BPTP: types.identifier(BPTP_NS),
-  ENTER: types.identifier(BPTP_ENTER),
-  EXIT: types.identifier(BPTP_EXIT)
-})
+})(window, window)`)
 // Use `(globalThis || window, (typeof require === 'function' && require('perf_hooks')) || window)` to run on NodeJS
 
 function getFileName(state) {
@@ -316,8 +312,14 @@ module.exports = function(babel) {
           }
           Array.prototype.push.apply(lines, state.file.code.split(/\r?\n/))
         },
-        exit(path) {
-          path.get('body')[0].insertBefore(dataAllocationAst[0])
+        exit(path, state) {
+          const profileDataAst = profileDataTemplate({
+            BPTP: types.identifier(BPTP_NS),
+            ENTER: types.identifier(BPTP_ENTER),
+            EXIT: types.identifier(BPTP_EXIT),
+            TOP: types.numericLiteral(state.opts.displayTop || 20)
+          })
+          path.get('body')[0].insertBefore(profileDataAst)
           path.stop()
         }
       },
