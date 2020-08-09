@@ -143,7 +143,7 @@ function insertExit(path, bptpObj) {
   )
 }
 
-function insertExitForArrowFunctionOmittingForm(path, state, name, lines) {
+function insertTraceForArrowFunctionOmittingForm(path, state, name, lines) {
   const bptpObj = path.scope.generateUidIdentifier(BPTP_OBJ)
   const declarator = types.variableDeclarator(
     bptpObj,
@@ -266,7 +266,7 @@ function insertTrace(path, state, lines) {
       insertExit(path, bptpObj)
     }
   } else {
-    insertExitForArrowFunctionOmittingForm(path, state, name, lines)
+    insertTraceForArrowFunctionOmittingForm(path, state, name, lines)
   }
 }
 
