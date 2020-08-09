@@ -1,10 +1,14 @@
 {
   "name": "babel-plugin-time-profiler",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "index.js",
   "license": "MIT",
   "description": "Babel plugin to profile user code.",
-  "keywords": ["babel", "plugin", "profiler"],
+  "keywords": [
+    "babel",
+    "plugin",
+    "profiler"
+  ],
   "devDependencies": {
     "@babel/cli": "^7.10.1"
   },

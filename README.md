@@ -4,7 +4,9 @@ Add profiling code into specified files. You can start/stop the profier and show
 
 ## Installation
 
-TODO
+```sh
+yarn add --dev babel-plugin-time-profiler
+```
 
 ## Usage
 
